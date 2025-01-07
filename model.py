@@ -3,16 +3,31 @@ import numpy_financial as npf
 from datetime import datetime, timedelta
 import plotly.graph_objects as go
 
-
 class LoanCalculator:
     def __init__(self, annual_interest_rate, interest_rate_cap=12, interest_rate_minimum=4):
         self.annual_interest_rate = annual_interest_rate  # Initial interest rate (APR)
         self.interest_rate_cap = interest_rate_cap  # Maximum interest rate cap
         self.interest_rate_minimum = interest_rate_minimum  # Minimum interest rate cap
 
+    def process_adjustments(self, adjustment_df):
+        """
+        Process and validate repayment/drawdown adjustments.
+        
+        adjustment_df: DataFrame with columns ['Event Date', 'Adjustment Amount']
+        """
+        if not all(col in adjustment_df.columns for col in ['Event Date', 'Adjustment Amount']):
+            raise ValueError("Adjustment DataFrame must contain 'Event Date' and 'Adjustment Amount' columns.")
+
+        # Convert Event Date to datetime
+        adjustment_df['Event Date'] = pd.to_datetime(adjustment_df['Event Date'])
+        
+        # Sort by Event Date
+        adjustment_df = adjustment_df.sort_values(by='Event Date')
+        return adjustment_df
+
     def calculate_amortization_schedule(self, loan_amount, loan_term, first_payment_date,
                                         years_rate_remains_fixed=1, periods_between_adjustments=12,
-                                        estimated_adjustments=0):
+                                        estimated_adjustments=0, adjustment_df=None):
         # Convert first payment date to datetime
         first_payment_date = pd.to_datetime(first_payment_date)
 
@@ -21,6 +36,10 @@ class LoanCalculator:
         remaining_balance = loan_amount
         current_interest_rate = self.annual_interest_rate
         adjustment_start_period = (years_rate_remains_fixed * 12) - 12 
+
+        # Prepare adjustments
+        if adjustment_df is not None:
+            adjustment_df = self.process_adjustments(adjustment_df)
 
         # Create an empty list to hold schedule data
         schedule = []
@@ -36,19 +55,30 @@ class LoanCalculator:
             interest_due = remaining_balance * monthly_interest_rate
             principal_paid = pmt - interest_due
 
+            # Check for balance adjustment
+            current_date = first_payment_date + pd.DateOffset(months=period - 1)
+            if adjustment_df is not None:
+                adjustments = adjustment_df[(adjustment_df['Event Date'] > (current_date - pd.DateOffset(months=1))) &
+                                             (adjustment_df['Event Date'] <= current_date)]
+                balance_adjustment = adjustments['Adjustment Amount'].sum() if not adjustments.empty else 0
+            else:
+                balance_adjustment = 0
+
             # Update remaining balance
-            remaining_balance -= principal_paid
+            remaining_balance += balance_adjustment  # Apply adjustments
+            remaining_balance -= principal_paid      # Subtract principal paid
 
             # Append data to schedule
             schedule.append({
                 "No.": period,
-                "Period": (first_payment_date + pd.DateOffset(months=period - 1)).strftime("%Y-%m-%d"),
-                "Year": (first_payment_date + pd.DateOffset(months=period - 1)).year,
+                "Period": current_date.strftime("%Y-%m-%d"),
+                "Year": current_date.year,
                 "Interest Rate": current_interest_rate,
-                "Interest Due": round(interest_due,2),
-                "Principal Paid": round(principal_paid,2),
-                "Payment Due": round(pmt,2),
-                "Balance": round(max(0, remaining_balance),2),  # Avoid negative balances
+                "Interest Due": round(interest_due, 2),
+                "Principal Paid": round(principal_paid, 2),
+                "Payment Due": round(pmt, 2),
+                "Balance Adjustment": round(balance_adjustment, 2),
+                "Balance": round(max(0, remaining_balance), 2),  # Avoid negative balances
             })
 
             # Adjust interest rate after the fixed period
@@ -59,13 +89,12 @@ class LoanCalculator:
         # Convert schedule to DataFrame
         schedule_df = pd.DataFrame(schedule)
         return schedule_df
-    
-    
+
     def amortization_plot(self, schedule_df):
         # Create stacked bar chart using Plotly
         fig = go.Figure()
         
-                # Add interest due stacked above principal paid
+        # Add interest due stacked above principal paid
         fig.add_trace(go.Bar(
             x=schedule_df["Period"],
             y=schedule_df["Interest Due"],
@@ -80,8 +109,6 @@ class LoanCalculator:
             name="Principal Paid",
             marker_color="#ed7953"
         ))
-
-
 
         # Update layout
         fig.update_layout(
