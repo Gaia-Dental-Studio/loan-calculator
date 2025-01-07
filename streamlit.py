@@ -80,7 +80,7 @@ with st.container(border=True):
     adjustment_df['Event Date'] = pd.to_datetime(adjustment_df['Event Date'])
     adjustment_df['Event Date'] = adjustment_df['Event Date'].dt.strftime('%Y-%m-%d')
     
-    if adjustment_df['Adjustment Amount'].sum() == 0:
+    if (adjustment_df['Adjustment Amount'] == 0).all():
         adjustment_df = None 
     
     # st.write(adjustment_df)
@@ -148,6 +148,8 @@ if st.button('Calculate'):
             "adjustment_df": adjustment_df.to_dict(orient='records') if adjustment_df is not None else None,
             "sliced_date": sliced_date
         }
+        
+    print(payload)
 
     # Send POST request to Flask API
     response = requests.post(api_url, json=payload)
