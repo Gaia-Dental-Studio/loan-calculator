@@ -17,7 +17,8 @@ def calculate_amortization_schedule():
         interest_type = data['interest_type']
         adjustment_df = data['adjustment_df']
         sliced_date = data['sliced_date']
-        sliced_date = pd.to_datetime(sliced_date)
+        sliced_date = pd.to_datetime(sliced_date) if sliced_date is not None else None
+        loan_term_mode = data['loan_term_mode']
         
         if adjustment_df is not None:
             adjustment_df = pd.DataFrame(adjustment_df)
@@ -31,7 +32,8 @@ def calculate_amortization_schedule():
                 loan_amount,
                 loan_term,
                 first_payment_date,
-                adjustment_df=adjustment_df
+                adjustment_df=adjustment_df,
+                loan_term_mode=loan_term_mode
             )
         elif interest_type == 'Variable':
             interest_rate = data['interest_rate']
@@ -53,13 +55,17 @@ def calculate_amortization_schedule():
                 years_rate_remains_fixed,
                 periods_between_adjustments,
                 estimated_adjustments,
-                adjustment_df
+                adjustment_df,
+                loan_term_mode
             )
         else:
             return jsonify({'error': 'Invalid interest type specified'}), 400
         
         # slice the schedule_df post sliced_date
         schedule_df['Period'] = pd.to_datetime(schedule_df['Period'])
+        print("MANAGED TO GET HERE")
+        
+        
         sliced_schedule_df = schedule_df[schedule_df['Period'] >= sliced_date] if sliced_date is not None else schedule_df
         
         schedule_df['Period'] = schedule_df['Period'].dt.strftime('%d-%m-%Y')

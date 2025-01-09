@@ -32,6 +32,10 @@ with st.container(border=True):
         sliced_date = first_payment_date + pd.DateOffset(years=sliced_period)
         sliced_date = sliced_date.strftime('%Y-%m-%d')
         
+    else:
+        sliced_date = first_payment_date
+        sliced_date = sliced_date.strftime('%Y-%m-%d')
+        
     
     
     
@@ -77,11 +81,15 @@ with st.container(border=True):
                     hide_index=True,
                     num_rows="dynamic")
     
+    
+    
     adjustment_df['Event Date'] = pd.to_datetime(adjustment_df['Event Date'])
     adjustment_df['Event Date'] = adjustment_df['Event Date'].dt.strftime('%Y-%m-%d')
     
     if (adjustment_df['Adjustment Amount'] == 0).all():
         adjustment_df = None 
+        
+    loan_term_mode = st.selectbox('Loan Term Mode', ['fixed', 'adjusted'], index=1)
     
     # st.write(adjustment_df)
     
@@ -131,7 +139,8 @@ if st.button('Calculate'):
             "interest_type": "Fixed",
             "interest_rate": interest_rate,
             "adjustment_df": adjustment_df.to_dict(orient='records') if adjustment_df is not None else None,
-            "sliced_date": sliced_date
+            "sliced_date": sliced_date,
+            "loan_term_mode": loan_term_mode
         }
     elif interest_type == 'Variable':
         payload = {
@@ -146,7 +155,8 @@ if st.button('Calculate'):
             "periods_between_adjustments": periods_between_adjustments,
             "estimated_adjustments": estimated_adjustments,
             "adjustment_df": adjustment_df.to_dict(orient='records') if adjustment_df is not None else None,
-            "sliced_date": sliced_date
+            "sliced_date": sliced_date,
+            "loan_term_mode": loan_term_mode
         }
         
     print(payload)
@@ -158,7 +168,7 @@ if st.button('Calculate'):
     # print(response.json())
 
     response_data = response.json()
-    # st.write(response_data)
+    st.write(response_data)
     response_df = pd.DataFrame(response_data['schedule_df'])
     response_df_sliced = pd.DataFrame(response_data['sliced_schedule_df'])
     

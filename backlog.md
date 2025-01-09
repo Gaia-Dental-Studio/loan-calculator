@@ -1,0 +1,1 @@
+- Not working when sliced period is empty (0) or simply if it is not sliced (DONE)
