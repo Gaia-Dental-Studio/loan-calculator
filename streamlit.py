@@ -20,7 +20,7 @@ with st.container(border=True):
     
     with col2:
         compound_period = st.selectbox('Compound Period', ['Monthly'])
-        payment_frequency = st.selectbox('Payment Frequency', ['Monthly'])
+        payment_frequency = st.selectbox('Payment Frequency', ['weekly', 'fortnightly', 'monthly'], index=2)
         first_payment_date = st.date_input('First Payment Date', value=pd.to_datetime('2025-01-01'))
         
     sliced_period = st.number_input('Get amortization after specific year', min_value=0, value=0)
@@ -140,7 +140,8 @@ if st.button('Calculate'):
             "interest_rate": interest_rate,
             "adjustment_df": adjustment_df.to_dict(orient='records') if adjustment_df is not None else None,
             "sliced_date": sliced_date,
-            "loan_term_mode": loan_term_mode
+            "loan_term_mode": loan_term_mode,
+            "payment_frequency": payment_frequency
         }
     elif interest_type == 'Variable':
         payload = {
@@ -156,7 +157,8 @@ if st.button('Calculate'):
             "estimated_adjustments": estimated_adjustments,
             "adjustment_df": adjustment_df.to_dict(orient='records') if adjustment_df is not None else None,
             "sliced_date": sliced_date,
-            "loan_term_mode": loan_term_mode
+            "loan_term_mode": loan_term_mode,
+            "payment_frequency": payment_frequency
         }
         
     print(payload)
