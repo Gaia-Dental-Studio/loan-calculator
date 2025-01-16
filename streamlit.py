@@ -8,6 +8,11 @@ from datetime import date
 st.title('Loan Calculator')
 
 
+type = st.radio('Select the type of loan', ('By Loan Term', 'By Repayment Amount'))
+
+
+
+
 with st.container(border=True):
     st.markdown("### Loan Information")
     
@@ -16,7 +21,17 @@ with st.container(border=True):
     with col1:
         loan_amount = st.number_input('Loan Amount', min_value=0, value=150000)
         interest_rate = st.number_input('Annual Interest Rate (%)', min_value=0.0, value=5.5, step=0.25)
-        loan_term = st.number_input('Loan Term (years)', min_value=0, value=30)
+        
+        
+        loan_term = None
+        repayment_amount = None
+        
+        if type == 'By Loan Term':
+            loan_term = st.number_input('Loan Term (years)', min_value=0, value=30)
+        else:
+            repayment_amount = st.number_input('Repayment Amount', min_value=0, value=800)
+        
+        
     
     with col2:
         compound_period = st.selectbox('Compound Period', ['Monthly'])
@@ -39,25 +54,25 @@ with st.container(border=True):
     
     
     
-with st.container(border=True):
-    st.markdown("### Interest Rate Configuration")
+# with st.container(border=True):
+#     st.markdown("### Interest Rate Configuration")
     
     
-    interest_type = st.selectbox('Interest Type', ['Fixed', 'Variable'])
+#     interest_type = st.selectbox('Interest Type', ['Fixed', 'Variable'])
     
-    if interest_type == 'Variable':
+#     if interest_type == 'Variable':
  
-        col1, col2 = st.columns(2)
+#         col1, col2 = st.columns(2)
         
-        with col1:
+#         with col1:
             
-            years_rate_remains_fixed = st.number_input('Years Rate Remains Fixed', min_value=0, value=1)
-            interest_rate_cap = st.number_input('Interest Rate Cap (%)', min_value=0, value=12)
-            interest_rate_minimum = st.number_input('Interest Rate Minimum (%)', min_value=0, value=4)
+#             years_rate_remains_fixed = st.number_input('Years Rate Remains Fixed', min_value=0, value=1)
+#             interest_rate_cap = st.number_input('Interest Rate Cap (%)', min_value=0, value=12)
+#             interest_rate_minimum = st.number_input('Interest Rate Minimum (%)', min_value=0, value=4)
             
-        with col2:
-            periods_between_adjustments = st.number_input('Periods Between Adjustments (Months)', min_value=0, value=12)
-            estimated_adjustments = st.number_input('Estimated Adjustments (%)', min_value=0.0, value=0.25, step=0.25)
+#         with col2:
+#             periods_between_adjustments = st.number_input('Periods Between Adjustments (Months)', min_value=0, value=12)
+#             estimated_adjustments = st.number_input('Estimated Adjustments (%)', min_value=0.0, value=0.25, step=0.25)
             
 
 with st.container(border=True):
@@ -111,6 +126,8 @@ with st.container(border=True):
         
     loan_term_mode = st.selectbox('Loan Term Mode', ['fixed', 'adjusted'], index=1)
     
+    # loan_term_mode = 'adjusted'
+    
     # st.write(adjustment_df)
     
             
@@ -155,6 +172,7 @@ if st.button('Calculate'):
         payload = {
             "loan_amount": loan_amount,
             "loan_term": loan_term,  # 15 years
+            "repayment_amount": repayment_amount,
             "first_payment_date": first_payment_date_str,
             "interest_type": "Fixed",
             "interest_rate": interest_rate,
@@ -162,12 +180,14 @@ if st.button('Calculate'):
             "sliced_date": sliced_date,
             "loan_term_mode": loan_term_mode,
             "payment_frequency": payment_frequency,
-            'interest_table': None
+            'interest_table': None,
+            'type': type
         }
     elif interest_type == 'Variable':
         payload = {
             "loan_amount": loan_amount,
             "loan_term": loan_term,  # 15 years
+            "repayment_amount": repayment_amount,
             "first_payment_date": first_payment_date_str,
             "interest_type": "Variable",
             "interest_rate": interest_rate,
@@ -180,7 +200,8 @@ if st.button('Calculate'):
             "sliced_date": sliced_date,
             "loan_term_mode": loan_term_mode,
             "payment_frequency": payment_frequency,
-            'interest_table': interest_table_dict
+            'interest_table': interest_table_dict,
+            'type': type
         }
         
     # print(payload)
