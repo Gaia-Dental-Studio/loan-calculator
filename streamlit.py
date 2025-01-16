@@ -96,7 +96,7 @@ with st.container(border=True):
             
 with st.container(border=True):
     
-    st.markdown("### Repayment / Drawdown Adjustments")
+    st.markdown("### Extra Repayment / Drawdown Adjustments")
     
     # create empty dataframe with 2 columns of Event Date and Adjustment Amount with 5 empty rows 
     adjustment_df = pd.DataFrame(columns=['Event Date', 'Adjustment Amount'], data=[[date(2025, 1, 1), 0]]*1)
@@ -218,7 +218,8 @@ if st.button('Calculate'):
     response_df = pd.DataFrame(response_data['schedule_df'])
     response_df_sliced = pd.DataFrame(response_data['sliced_schedule_df'])
     
-    st.dataframe(response_df)
+    st.dataframe(response_df, column_order = ('No.', 'Period', 'Balance', 'Balance Adjustment', 'Interest Rate', 'Interest Due', 'Principal Paid', 'Payment Due', 'Year', 'Remark'), hide_index=True)
+    
     
     fig = LoanCalculator(interest_rate).amortization_plot(response_df)
     
