@@ -221,16 +221,28 @@ if st.button('Calculate'):
     
     fig = LoanCalculator(interest_rate).amortization_plot(response_df)
     
+    fig_loan_balance = LoanCalculator(interest_rate).loan_balance_plot(response_df)
+    
+    
     st.plotly_chart(fig)
     
+    st.plotly_chart(fig_loan_balance)
+    
     st.divider()
+    
+    st.markdown("### Sliced Amortization Schedule")
     
     st.dataframe(response_df_sliced)
     
     fig2 = LoanCalculator(interest_rate).amortization_plot(response_df_sliced)
     
+    fig2_loan_balance = LoanCalculator(interest_rate).loan_balance_plot(response_df_sliced)
+    
+    
     st.plotly_chart(fig2)
     
+
+    st.plotly_chart(fig2_loan_balance)
 
     # if response.status_code == 200:
     #     # Parse JSON response

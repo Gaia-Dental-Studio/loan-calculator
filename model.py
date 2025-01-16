@@ -329,5 +329,29 @@ class LoanCalculator:
         )
 
         return fig
+    
+    
+    def loan_balance_plot(self, schedule_df):
+        
+        # Create bar chart using Plotly
+        fig = go.Figure()
+        
+        # Add loan balance bar
+        fig.add_trace(go.Bar(
+            x=schedule_df["Period"],
+            y=schedule_df["Balance"],
+            name="Loan Balance",
+            marker_color="#636efa"
+        ))
+
+        # Update layout
+        fig.update_layout(
+            title="Loan Balance Over Time",
+            xaxis_title="Periods",
+            yaxis_title="Amount ($)",
+            xaxis=dict(tickformat="%b-%Y")
+        )
+
+        return fig
 
  
