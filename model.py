@@ -26,16 +26,17 @@ class LoanCalculator:
         return adjustment_df
 
     def calculate_amortization_schedule(self, loan_amount, loan_term, first_payment_date,
-                                        years_rate_remains_fixed=1, periods_between_adjustments=12,
-                                        estimated_adjustments=0, adjustment_df=None, 
-                                        loan_term_mode="fixed", payment_frequency="monthly", 
-                                        interest_type="Fixed"):
+                                        adjustment_df=None, loan_term_mode="fixed", 
+                                        payment_frequency="monthly", interest_type="Fixed",
+                                        variable_interest_configuration=None):
         # Validate payment frequency
         valid_frequencies = {"monthly": 12, "weekly": 52, "fortnightly": 26}
         if payment_frequency not in valid_frequencies: 
             raise ValueError(f"Invalid payment frequency. Choose from {list(valid_frequencies.keys())}.")
 
-        periods_between_adjustments = periods_between_adjustments * valid_frequencies[payment_frequency] / 12
+        # Validate variable interest configuration
+        if interest_type == "Variable" and not variable_interest_configuration:
+            raise ValueError("Variable interest configuration must be provided for 'Variable' interest type.")
 
         # Determine the number of periods per year
         periods_per_year = valid_frequencies[payment_frequency]
@@ -47,26 +48,31 @@ class LoanCalculator:
         total_periods = loan_term * periods_per_year
         remaining_balance = loan_amount
         current_interest_rate = self.annual_interest_rate
-        adjustment_start_period = (years_rate_remains_fixed * periods_per_year) - periods_per_year + 1
-        
-        # print("Adjustment Start Period: ", adjustment_start_period)
 
         # Prepare adjustments
         if adjustment_df is not None:
             adjustment_df = self.process_adjustments(adjustment_df)
 
+        # Initialize variable interest configuration tracking
+        if interest_type == "Variable":
+            interest_rate_schedule = variable_interest_configuration["Interest Rate"]
+            length_period_schedule = variable_interest_configuration["Length Period before next Adjustment"]
+            
+            # print("Length Period Schedule: ", length_period_schedule)
+            
+            current_stage = 0
+            periods_remaining_in_stage = length_period_schedule.get(str(current_stage), float("inf"))
+            
+            # print("Periods Remaining in Stage: ", periods_remaining_in_stage)
+            
+            current_interest_rate = interest_rate_schedule.get(str(current_stage), self.annual_interest_rate)
+
         # Calculate initial payment
-        period_interest_rate = (self.annual_interest_rate / 100) / periods_per_year
-        
-        print("Period per Year", periods_per_year)
-        
-        print("Period Interest Rate",period_interest_rate)
+        period_interest_rate = (current_interest_rate / 100) / periods_per_year
         initial_payment = npf.pmt(rate=period_interest_rate, nper=total_periods, pv=-loan_amount)
 
         # Create an empty list to hold schedule data
         schedule = []
-        
-        # print("Total Periods: ", total_periods)
 
         for period in range(1, total_periods + 1):
             # Generate the correct period date
@@ -89,27 +95,55 @@ class LoanCalculator:
             if loan_term_mode == "adjusted" and adjustment_df is not None and not adjustment_df.empty and balance_adjustment != 0:
                 remaining_periods = max(1, int(npf.nper(rate=period_interest_rate, 
                                                         pmt=-initial_payment, 
-                                                        pv=-remaining_balance).round()))
+                                                        pv=remaining_balance).round()))
                 total_periods = period + remaining_periods - 1
                 
-            print("Period Between Adjustment", periods_between_adjustments)
-            print("Adjustment Start Period", adjustment_start_period)
+                print('payment', initial_payment)
+                
+                print('Period', period)
+                print("remaining period", remaining_periods)
+                print("remaining balance", remaining_balance)
+                print("period interest rate", period_interest_rate)
 
             # Adjust interest rate if variable
-            if interest_type == "Variable" and period > adjustment_start_period and (period - adjustment_start_period) % periods_between_adjustments == 0:
-                current_interest_rate += estimated_adjustments
-                current_interest_rate = max(self.interest_rate_minimum, min(self.interest_rate_cap, current_interest_rate))
+            if interest_type == "Variable":
+                if periods_remaining_in_stage <= 0:
+                    current_stage += 1
+                    current_interest_rate = interest_rate_schedule.get(str(current_stage), current_interest_rate)
+                    periods_remaining_in_stage = length_period_schedule.get(str(current_stage), float("inf"))
+
+                periods_remaining_in_stage -= 1
+                # print("Current Period remaining in Stage: ", periods_remaining_in_stage)
+                
                 period_interest_rate = current_interest_rate / 100 / periods_per_year
+                
+            # pmt = npf.pmt(rate=period_interest_rate, nper=total_periods - period + 1, pv=-remaining_balance)
 
             # Calculate PMT for this period
             if loan_term_mode == "fixed" or (adjustment_df is None or adjustment_df.empty):
                 pmt = npf.pmt(rate=period_interest_rate, nper=total_periods - period + 1, pv=-remaining_balance)
             else:
-                pmt = initial_payment
+                pmt = npf.pmt(rate=period_interest_rate, nper=total_periods - period + 1, pv=-remaining_balance)
+                
+                initial_payment = pmt
+                
+                # print("Period Interest Rate", period_interest_rate)
+                # print("Total Period", total_periods)
+                # print("Period", period)
+                # print("Remaining Balance",remaining_balance )
+                
+                # print("Payment", pmt)
+                
+            # WHY DOES THE ADJUSTED LOAN TERM MODE WORKS ON VARIABLE INTEREST, BUT NOT WHEN THERE IS ADJUSTMENT DF
+                
 
             # Calculate interest due and principal paid
             interest_due = remaining_balance * period_interest_rate
             principal_paid = pmt - interest_due
+            
+            # print("Interest Due: ", interest_due)
+            # print("Principal Paid: ", principal_paid)
+            # print("Payment Due: ", pmt)
 
             # Handle final period adjustments
             if remaining_balance - principal_paid <= 0:
@@ -174,3 +208,5 @@ class LoanCalculator:
         )
 
         return fig
+
+ 

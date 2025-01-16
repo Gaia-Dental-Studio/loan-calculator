@@ -60,7 +60,23 @@ with st.container(border=True):
             estimated_adjustments = st.number_input('Estimated Adjustments (%)', min_value=0.0, value=0.25, step=0.25)
             
 
-
+with st.container(border=True):
+    st.markdown("### Interest Rate Configuration (Table Mode)")
+    
+    interest_type = st.selectbox('Interest Type', ['Fixed', 'Variable'], key='interest-table')
+    
+    if interest_type == 'Variable':
+        
+        interest_table = pd.DataFrame(columns=['Interest Rate', 'Length Period before next Adjustment'], data=[[interest_rate, 12]]*1)
+        
+        interest_table = st.data_editor(interest_table, hide_index=True, num_rows="dynamic")
+        
+        # drop rows with NaN values
+        interest_table = interest_table.dropna()
+        
+        interest_table_dict = interest_table.to_dict()
+        
+        # print(interest_table.to_dict())
 
             
 with st.container(border=True):
@@ -145,7 +161,8 @@ if st.button('Calculate'):
             "adjustment_df": adjustment_df.to_dict(orient='records') if adjustment_df is not None else None,
             "sliced_date": sliced_date,
             "loan_term_mode": loan_term_mode,
-            "payment_frequency": payment_frequency
+            "payment_frequency": payment_frequency,
+            'interest_table': None
         }
     elif interest_type == 'Variable':
         payload = {
@@ -154,18 +171,19 @@ if st.button('Calculate'):
             "first_payment_date": first_payment_date_str,
             "interest_type": "Variable",
             "interest_rate": interest_rate,
-            "interest_rate_cap": interest_rate_cap,
-            "interest_rate_minimum": interest_rate_minimum,
-            "years_rate_remains_fixed": years_rate_remains_fixed,
-            "periods_between_adjustments": periods_between_adjustments,
-            "estimated_adjustments": estimated_adjustments,
+            # "interest_rate_cap": interest_rate_cap,
+            # "interest_rate_minimum": interest_rate_minimum,
+            # "years_rate_remains_fixed": years_rate_remains_fixed,
+            # "periods_between_adjustments": periods_between_adjustments,
+            # "estimated_adjustments": estimated_adjustments,
             "adjustment_df": adjustment_df.to_dict(orient='records') if adjustment_df is not None else None,
             "sliced_date": sliced_date,
             "loan_term_mode": loan_term_mode,
-            "payment_frequency": payment_frequency
+            "payment_frequency": payment_frequency,
+            'interest_table': interest_table_dict
         }
         
-    print(payload)
+    # print(payload)
 
     # Send POST request to Flask API
     response = requests.post(api_url, json=payload)

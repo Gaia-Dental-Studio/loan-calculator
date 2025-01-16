@@ -9,6 +9,8 @@ def calculate_amortization_schedule():
     try:
         # Get the JSON data from the request
         data = request.json
+        
+
 
         # Extract variables from the request
         loan_amount = data['loan_amount']
@@ -20,6 +22,12 @@ def calculate_amortization_schedule():
         sliced_date = pd.to_datetime(sliced_date) if sliced_date is not None else None
         loan_term_mode = data['loan_term_mode']
         payment_frequency = data['payment_frequency']
+        
+        
+        
+        interest_table = data['interest_table']
+        # print("Managed to Load the Data!")
+        
         
         if adjustment_df is not None:
             adjustment_df = pd.DataFrame(adjustment_df)
@@ -40,28 +48,29 @@ def calculate_amortization_schedule():
             )
         elif interest_type == 'Variable':
             interest_rate = data['interest_rate']
-            interest_rate_cap = data['interest_rate_cap']
-            interest_rate_minimum = data['interest_rate_minimum']
-            years_rate_remains_fixed = data['years_rate_remains_fixed']
-            periods_between_adjustments = data['periods_between_adjustments']
-            estimated_adjustments = data['estimated_adjustments']
+            # interest_rate_cap = data['interest_rate_cap']
+            # interest_rate_minimum = data['interest_rate_minimum']
+            # years_rate_remains_fixed = data['years_rate_remains_fixed']
+            # periods_between_adjustments = data['periods_between_adjustments']
+            # estimated_adjustments = data['estimated_adjustments']
 
             calculator = LoanCalculator(
                 interest_rate,
-                interest_rate_cap,
-                interest_rate_minimum
+                # interest_rate_cap,
+                # interest_rate_minimum
             )
             schedule_df = calculator.calculate_amortization_schedule(
                 loan_amount,
                 loan_term,
                 first_payment_date,
-                years_rate_remains_fixed,
-                periods_between_adjustments,
-                estimated_adjustments,
+                # years_rate_remains_fixed,
+                # periods_between_adjustments,
+                # estimated_adjustments,
                 adjustment_df,
                 loan_term_mode,
                 payment_frequency,
-                interest_type
+                interest_type,
+                interest_table
             )
         else:
             return jsonify({'error': 'Invalid interest type specified'}), 400
