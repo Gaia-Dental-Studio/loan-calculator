@@ -124,7 +124,8 @@ with st.container(border=True):
     if (adjustment_df['Adjustment Amount'] == 0).all():
         adjustment_df = None 
         
-    loan_term_mode = st.selectbox('Loan Term Mode', ['fixed', 'adjusted'], index=1)
+    # loan_term_mode = st.selectbox('Loan Term Mode', ['fixed', 'adjusted'], index=1)
+    loan_term_mode = 'adjusted'
     
     # loan_term_mode = 'adjusted'
     
