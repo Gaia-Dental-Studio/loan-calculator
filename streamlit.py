@@ -59,6 +59,10 @@ with st.container(border=True):
             periods_between_adjustments = st.number_input('Periods Between Adjustments (Months)', min_value=0, value=12)
             estimated_adjustments = st.number_input('Estimated Adjustments (%)', min_value=0.0, value=0.25, step=0.25)
             
+
+
+
+            
 with st.container(border=True):
     
     st.markdown("### Repayment / Drawdown Adjustments")
@@ -170,7 +174,7 @@ if st.button('Calculate'):
     # print(response.json())
 
     response_data = response.json()
-    st.write(response_data)
+    # st.write(response_data)
     response_df = pd.DataFrame(response_data['schedule_df'])
     response_df_sliced = pd.DataFrame(response_data['sliced_schedule_df'])
     

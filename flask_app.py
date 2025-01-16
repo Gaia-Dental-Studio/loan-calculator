@@ -35,7 +35,8 @@ def calculate_amortization_schedule():
                 first_payment_date,
                 adjustment_df=adjustment_df,
                 loan_term_mode=loan_term_mode,
-                payment_frequency=payment_frequency
+                payment_frequency=payment_frequency,
+                interest_type=interest_type
             )
         elif interest_type == 'Variable':
             interest_rate = data['interest_rate']
@@ -59,7 +60,8 @@ def calculate_amortization_schedule():
                 estimated_adjustments,
                 adjustment_df,
                 loan_term_mode,
-                payment_frequency
+                payment_frequency,
+                interest_type
             )
         else:
             return jsonify({'error': 'Invalid interest type specified'}), 400

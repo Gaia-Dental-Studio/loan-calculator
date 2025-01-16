@@ -28,11 +28,14 @@ class LoanCalculator:
     def calculate_amortization_schedule(self, loan_amount, loan_term, first_payment_date,
                                         years_rate_remains_fixed=1, periods_between_adjustments=12,
                                         estimated_adjustments=0, adjustment_df=None, 
-                                        loan_term_mode="fixed", payment_frequency="monthly"):
+                                        loan_term_mode="fixed", payment_frequency="monthly", 
+                                        interest_type="Fixed"):
         # Validate payment frequency
         valid_frequencies = {"monthly": 12, "weekly": 52, "fortnightly": 26}
-        if payment_frequency not in valid_frequencies:
+        if payment_frequency not in valid_frequencies: 
             raise ValueError(f"Invalid payment frequency. Choose from {list(valid_frequencies.keys())}.")
+
+        periods_between_adjustments = periods_between_adjustments * valid_frequencies[payment_frequency] / 12
 
         # Determine the number of periods per year
         periods_per_year = valid_frequencies[payment_frequency]
@@ -44,7 +47,9 @@ class LoanCalculator:
         total_periods = loan_term * periods_per_year
         remaining_balance = loan_amount
         current_interest_rate = self.annual_interest_rate
-        adjustment_start_period = (years_rate_remains_fixed * periods_per_year) - periods_per_year
+        adjustment_start_period = (years_rate_remains_fixed * periods_per_year) - periods_per_year + 1
+        
+        # print("Adjustment Start Period: ", adjustment_start_period)
 
         # Prepare adjustments
         if adjustment_df is not None:
@@ -52,10 +57,16 @@ class LoanCalculator:
 
         # Calculate initial payment
         period_interest_rate = (self.annual_interest_rate / 100) / periods_per_year
+        
+        print("Period per Year", periods_per_year)
+        
+        print("Period Interest Rate",period_interest_rate)
         initial_payment = npf.pmt(rate=period_interest_rate, nper=total_periods, pv=-loan_amount)
 
         # Create an empty list to hold schedule data
         schedule = []
+        
+        # print("Total Periods: ", total_periods)
 
         for period in range(1, total_periods + 1):
             # Generate the correct period date
@@ -80,6 +91,15 @@ class LoanCalculator:
                                                         pmt=-initial_payment, 
                                                         pv=-remaining_balance).round()))
                 total_periods = period + remaining_periods - 1
+                
+            print("Period Between Adjustment", periods_between_adjustments)
+            print("Adjustment Start Period", adjustment_start_period)
+
+            # Adjust interest rate if variable
+            if interest_type == "Variable" and period > adjustment_start_period and (period - adjustment_start_period) % periods_between_adjustments == 0:
+                current_interest_rate += estimated_adjustments
+                current_interest_rate = max(self.interest_rate_minimum, min(self.interest_rate_cap, current_interest_rate))
+                period_interest_rate = current_interest_rate / 100 / periods_per_year
 
             # Calculate PMT for this period
             if loan_term_mode == "fixed" or (adjustment_df is None or adjustment_df.empty):
@@ -118,11 +138,6 @@ class LoanCalculator:
             # Stop the loop if balance is fully paid off
             if remaining_balance <= 0:
                 break
-
-            # Adjust interest rate after the fixed period
-            if period > adjustment_start_period and (period - adjustment_start_period) % periods_between_adjustments == 0:
-                current_interest_rate += estimated_adjustments
-                current_interest_rate = max(self.interest_rate_minimum, min(self.interest_rate_cap, current_interest_rate))
 
         # Convert schedule to DataFrame
         schedule_df = pd.DataFrame(schedule)
