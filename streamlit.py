@@ -4,6 +4,40 @@ import numpy as np
 from model import LoanCalculator
 import requests
 from datetime import date
+import numpy as np
+import numpy_financial as npf
+
+
+
+def calculate_minimum_repayment(period_interest_rate, remaining_balance, payment_frequency):
+    # Initial parameters
+    initial_payment = 10
+    increment_list = [1000, 100, 10, 1]  # Increment levels
+    
+    # Define periods per year for different frequencies
+    period_per_year = {'monthly': 12, 'weekly': 52, 'fortnightly': 26}
+    period_interest_rate = period_interest_rate / period_per_year[payment_frequency]
+    
+    # Iterate through increment levels
+    for increment in increment_list:
+        while True:
+            # Calculate the result
+            result = npf.nper(rate=period_interest_rate, pmt=-initial_payment, pv=remaining_balance)
+            
+            if not np.isnan(result):  # If result is valid, break to try smaller increment
+                break
+            else:
+                initial_payment += increment  # Increase by current increment
+        
+        # Backtrack one step and use the next smaller increment
+        initial_payment -= increment
+
+    # Final recalculation with the refined initial payment
+    result = npf.nper(rate=period_interest_rate, pmt=-initial_payment, pv=remaining_balance)
+    
+    return initial_payment
+
+
 
 st.title('Loan Calculator')
 
@@ -23,22 +57,23 @@ with st.container(border=True):
         interest_rate = st.number_input('Annual Interest Rate (%)', min_value=0.0, value=5.5, step=0.25)
         
         
-        loan_term = None
-        repayment_amount = None
-        
-        if type == 'By Loan Term':
-            loan_term = st.number_input('Loan Term (years)', min_value=0, value=30)
-        else:
-            repayment_amount = st.number_input('Repayment Amount', min_value=0, value=800)
-        
-        
+
     
     with col2:
-        compound_period = st.selectbox('Compound Period', ['Monthly'])
+        # compound_period = st.selectbox('Compound Period', ['Monthly'])
         payment_frequency = st.selectbox('Payment Frequency', ['weekly', 'fortnightly', 'monthly'], index=2)
         first_payment_date = st.date_input('First Payment Date', value=pd.to_datetime('2025-01-01'))
         
-    sliced_period = st.number_input('Get amortization after specific year', min_value=0, value=0)
+    loan_term = None
+    repayment_amount = None
+        
+    if type == 'By Loan Term':
+        loan_term = st.number_input('Loan Term (years)', min_value=0, value=30)
+    else:
+        minimum_repayment_amount = calculate_minimum_repayment(interest_rate/100, loan_amount, payment_frequency)
+        repayment_amount = st.number_input('Repayment Amount', min_value=minimum_repayment_amount, value=800)
+            
+    sliced_period = st.number_input('Get schedule after specific year', min_value=0, value=0)
     sliced_date = None
     
     if sliced_period > 0:
@@ -90,6 +125,16 @@ with st.container(border=True):
         interest_table = interest_table.dropna()
         
         interest_table_dict = interest_table.to_dict()
+        
+        max_interest = max(interest_table_dict['Interest Rate'].values())
+        
+        if type == 'By Repayment Amount':
+            new_minimum_repayment_amount = calculate_minimum_repayment(max_interest/100, loan_amount, payment_frequency)
+            
+            if new_minimum_repayment_amount > repayment_amount:
+                st.warning(f"Variable Interest Rate Configuration has adjusted the minimum repayment amount to {new_minimum_repayment_amount}")
+                repayment_amount = st.number_input('Repayment Amount', min_value=new_minimum_repayment_amount, value=new_minimum_repayment_amount)
+        
         
         # print(interest_table.to_dict())
 
