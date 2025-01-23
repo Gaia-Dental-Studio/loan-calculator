@@ -71,9 +71,9 @@ with st.container(border=True):
         loan_term = st.number_input('Loan Term (years)', min_value=0, value=30)
     else:
         minimum_repayment_amount = calculate_minimum_repayment(interest_rate/100, loan_amount, payment_frequency)
-        repayment_amount = st.number_input('Repayment Amount', min_value=minimum_repayment_amount, value=800)
+        repayment_amount = st.number_input('Repayment Amount', min_value=minimum_repayment_amount, value=minimum_repayment_amount)
             
-    sliced_period = st.number_input('Get schedule after specific year', min_value=0, value=0)
+    sliced_period = st.number_input('Get schedule after specific year (Loan Remaining Years)', min_value=0, value=0, help='For example if you enter 5, a sliced amortization schedule will be generated after 5 years from the first payment date')
     sliced_date = None
     
     if sliced_period > 0:
@@ -278,6 +278,7 @@ if st.button('Calculate'):
     st.divider()
     
     st.markdown("### Sliced Amortization Schedule")
+    st.write("This is the amortization schedule after", sliced_period, "years from the first payment date as specified in input of Loan Remaining Years")
     
     st.dataframe(response_df_sliced)
     
