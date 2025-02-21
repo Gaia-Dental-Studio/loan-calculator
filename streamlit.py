@@ -39,6 +39,39 @@ def calculate_minimum_repayment(period_interest_rate, remaining_balance, payment
 
 
 
+def count_periods(start_date: pd.Timestamp, end_date: pd.Timestamp, increment: str) -> int:
+    """
+    Calculate the number of periods between start_date and end_date inclusive,
+    based on the given increment ('monthly', 'weekly', 'fortnightly').
+
+    Parameters:
+        start_date (pd.Timestamp): The starting date.
+        end_date (pd.Timestamp): The ending date.
+        increment (str): The type of increment ('monthly', 'weekly', 'fortnightly').
+
+    Returns:
+        int: Number of periods inclusive of start_date and end_date.
+    """
+    if not isinstance(start_date, pd.Timestamp):
+        start_date = pd.to_datetime(start_date)
+    if not isinstance(end_date, pd.Timestamp):
+        end_date = pd.to_datetime(end_date)
+
+    if start_date > end_date:
+        raise ValueError("start_date must be before or equal to end_date")
+
+    if increment == 'monthly':
+        return (end_date.year - start_date.year) * 12 + (end_date.month - start_date.month) + 1
+    elif increment == 'weekly':
+        return ((end_date - start_date).days // 7) + 1
+    elif increment == 'fortnightly':  # Every 2 weeks
+        return ((end_date - start_date).days // 14) + 1
+    else:
+        raise ValueError("Invalid increment. Choose from 'monthly', 'weekly', or 'fortnightly'.")
+    
+    
+
+
 st.title('Loan Calculator')
 
 
@@ -115,17 +148,23 @@ with st.container(border=True):
     
     interest_type = st.selectbox('Interest Type', ['Fixed', 'Variable', 'Fixed-Variable'], key='interest-table')
     
+    if loan_term is not None:
+        final_date = first_payment_date + pd.DateOffset(years=loan_term)
+    else:
+        final_date = first_payment_date + pd.DateOffset(years=10)
+    
     if interest_type != 'Fixed':
-        
-        interest_table = pd.DataFrame(columns=['Interest Rate', 'Length Period before next Adjustment'], data=[[interest_rate, 12]]*1)
-        
-        
-        
+
+        # Default structure
+        interest_table = pd.DataFrame(columns=['Interest Rate', 'Applied From', 'Applied Until'],
+                                    data=[[interest_rate, first_payment_date, final_date]])
+
         if interest_type == 'Fixed-Variable':
-            interest_table = pd.DataFrame(columns=['Interest Rate', 'Length Period before next Adjustment', 'Type'], data=[[interest_rate, 12, 'Fixed']]*1)
-        
+            interest_table = pd.DataFrame(columns=['Interest Rate', 'Applied From', 'Applied Until', 'Type'],
+                                        data=[[interest_rate, first_payment_date, final_date, 'Fixed']])
+
             type_options = ['Fixed', 'Variable']
-            
+
             interest_table = st.data_editor(
                 interest_table,
                 column_config={
@@ -135,15 +174,50 @@ with st.container(border=True):
                         width="medium",
                         options=type_options,
                         required=True,
-                    )
+                    ),
+                    "Applied From": st.column_config.DateColumn(
+                        "Applied From",
+                        help="Select the start date",
+                        format="YYYY-MM-DD",
+                        required=True,
+                    ),
+                    "Applied Until": st.column_config.DateColumn(
+                        "Applied Until",
+                        help="Select the end date",
+                        format="YYYY-MM-DD",
+                        required=True,
+                    ),
                 },
                 hide_index=True,
                 num_rows="dynamic",  # Allows adding/removing rows dynamically
             )
+
+        else:
+            interest_table = st.data_editor(
+                interest_table,
+                column_config={
+                    "Applied From": st.column_config.DateColumn(
+                        "Applied From",
+                        help="Select the start date",
+                        format="YYYY-MM-DD",
+                        required=True,
+                    ),
+                    "Applied Until": st.column_config.DateColumn(
+                        "Applied Until",
+                        help="Select the end date",
+                        format="YYYY-MM-DD",
+                        required=True,
+                    ),
+                },
+                hide_index=True,
+                num_rows="dynamic"
+            )
             
-        else: 
-            interest_table = st.data_editor(interest_table, hide_index=True, num_rows="dynamic")
-        
+        interest_table['Length Period before next Adjustment'] = interest_table.apply(
+    lambda row: count_periods(row['Applied From'], row['Applied Until'], payment_frequency), axis=1
+)
+ 
+        interest_table.drop(columns=['Applied From', 'Applied Until'], inplace=True)
         
         # drop rows with NaN values
         interest_table = interest_table.dropna()

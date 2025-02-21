@@ -77,8 +77,17 @@ class LoanCalculator:
 
             # Check for balance adjustment
             if adjustment_df is not None:
-                adjustments = adjustment_df[(adjustment_df['Event Date'] > (current_date - timedelta(days=(365 // periods_per_year)))) &
+                adjustments = adjustment_df[
+                    # (adjustment_df['Event Date'] > (current_date + timedelta(days=1) - timedelta(days=(365 // periods_per_year)))) &
+                    (adjustment_df['Event Date'] >= current_date) &
                                              (adjustment_df['Event Date'] <= current_date)]
+                
+                # if not adjustments.empty:
+                #     print(adjustments)
+                #     print(period)
+                #     print(current_date - timedelta(days=(365 // periods_per_year)))
+                #     print(current_date)
+                
                 balance_adjustment = adjustments['Adjustment Amount'].sum() if not adjustments.empty else 0
             else:
                 balance_adjustment = 0
