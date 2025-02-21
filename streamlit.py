@@ -113,13 +113,37 @@ with st.container(border=True):
 with st.container(border=True):
     st.markdown("### Interest Rate Configuration (Table Mode)")
     
-    interest_type = st.selectbox('Interest Type', ['Fixed', 'Variable'], key='interest-table')
+    interest_type = st.selectbox('Interest Type', ['Fixed', 'Variable', 'Fixed-Variable'], key='interest-table')
     
-    if interest_type == 'Variable':
+    if interest_type != 'Fixed':
         
         interest_table = pd.DataFrame(columns=['Interest Rate', 'Length Period before next Adjustment'], data=[[interest_rate, 12]]*1)
         
-        interest_table = st.data_editor(interest_table, hide_index=True, num_rows="dynamic")
+        
+        
+        if interest_type == 'Fixed-Variable':
+            interest_table = pd.DataFrame(columns=['Interest Rate', 'Length Period before next Adjustment', 'Type'], data=[[interest_rate, 12, 'Fixed']]*1)
+        
+            type_options = ['Fixed', 'Variable']
+            
+            interest_table = st.data_editor(
+                interest_table,
+                column_config={
+                    "Type": st.column_config.SelectboxColumn(
+                        "Interest Type",
+                        help="Select the interest type",
+                        width="medium",
+                        options=type_options,
+                        required=True,
+                    )
+                },
+                hide_index=True,
+                num_rows="dynamic",  # Allows adding/removing rows dynamically
+            )
+            
+        else: 
+            interest_table = st.data_editor(interest_table, hide_index=True, num_rows="dynamic")
+        
         
         # drop rows with NaN values
         interest_table = interest_table.dropna()
