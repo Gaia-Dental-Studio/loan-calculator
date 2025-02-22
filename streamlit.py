@@ -35,7 +35,7 @@ def calculate_minimum_repayment(period_interest_rate, remaining_balance, payment
     # Final recalculation with the refined initial payment
     result = npf.nper(rate=period_interest_rate, pmt=-initial_payment, pv=remaining_balance)
     
-    return initial_payment
+    return initial_payment + 1
 
 
 
@@ -69,6 +69,45 @@ def count_periods(start_date: pd.Timestamp, end_date: pd.Timestamp, increment: s
     else:
         raise ValueError("Invalid increment. Choose from 'monthly', 'weekly', or 'fortnightly'.")
     
+    
+    
+def generate_event_dates(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Generate event dates for each row in the input DataFrame based on the given 'From', 'Until', and 'Period'.
+
+    Parameters:
+        df (pd.DataFrame): Input DataFrame with columns ['Amount', 'From', 'Until', 'Period'].
+
+    Returns:
+        pd.DataFrame: Output DataFrame with columns ['Event Date', 'Amount'].
+    """
+    event_list = []
+
+    for _, row in df.iterrows():
+        amount = row['Amount']
+        current_date = pd.to_datetime(row['From'])
+        end_date = pd.to_datetime(row['Until'])
+        period = row['Period']
+
+        while current_date <= end_date:
+            event_list.append({'Event Date': current_date, 'Adjustment Amount': amount})
+
+            # Increment the date based on the period type
+            if period == 'monthly':
+                current_date += pd.DateOffset(months=1)
+            elif period == 'weekly':
+                current_date += pd.DateOffset(weeks=1)
+            elif period == 'fortnightly':
+                current_date += pd.DateOffset(weeks=2)
+            else:
+                raise ValueError(f"Invalid period type: {period}")
+
+    # Convert the list to a DataFrame
+    result_df = pd.DataFrame(event_list)
+    
+    
+
+    return result_df
     
 
 
@@ -240,6 +279,7 @@ with st.container(border=True):
 with st.container(border=True):
     
     st.markdown("### Extra Repayment / Drawdown Adjustments")
+    st.caption("Positive amount for drawdown and negative amount for extra repayment")
     
     # create empty dataframe with 2 columns of Event Date and Adjustment Amount with 5 empty rows 
     adjustment_df = pd.DataFrame(columns=['Event Date', 'Adjustment Amount'], data=[[date(2025, 1, 1), 0]]*1)
@@ -261,14 +301,62 @@ with st.container(border=True):
     
     
     
+    st.markdown("### Periodical Extra Repayment / Drawdown Adjustments")
+    st.caption("Positive amount for drawdown and negative amount for extra repayment")
+    
+    periodical_adjusment = pd.DataFrame(columns=['Amount', 'From', 'Until', 'Period'],
+                                    data=[[0, first_payment_date, final_date, 'monthly']])
+    
+    period_options = ['monthly', 'fortnightly', 'weekly']
+    
+    periodical_adjusment = st.data_editor(
+                periodical_adjusment,
+                column_config={
+                    "Period": st.column_config.SelectboxColumn(
+                        "Period",
+                        help="Select the period type",
+                        width="medium",
+                        options=period_options,
+                        required=True,
+                    ),
+                    "From": st.column_config.DateColumn(
+                        "From",
+                        help="Select the start date",
+                        format="YYYY-MM-DD",
+                        required=True,
+                    ),
+                    "Until": st.column_config.DateColumn(
+                        "Until",
+                        help="Select the end date",
+                        format="YYYY-MM-DD",
+                        required=True,
+                    ),
+                },
+                hide_index=True,
+                num_rows="dynamic",  # Allows adding/removing rows dynamically
+            )
+    
+    
+    if not periodical_adjusment['Amount'].sum() == 0:
+        periodical_adjusment = generate_event_dates(periodical_adjusment)
+        adjustment_df = pd.concat([adjustment_df, periodical_adjusment])
+        adjustment_df = adjustment_df.drop_duplicates(subset=['Event Date'], keep='last')
+        
+    
+    
     adjustment_df['Event Date'] = pd.to_datetime(adjustment_df['Event Date'])
     adjustment_df['Event Date'] = adjustment_df['Event Date'].dt.strftime('%Y-%m-%d')
     
     if (adjustment_df['Adjustment Amount'] == 0).all():
         adjustment_df = None 
         
+        
     # loan_term_mode = st.selectbox('Loan Term Mode', ['fixed', 'adjusted'], index=1)
     loan_term_mode = 'adjusted'
+    
+    st.markdown("### Combined Extra Repayment")
+    
+    st.dataframe(adjustment_df)
     
     # loan_term_mode = 'adjusted'
     
@@ -327,7 +415,7 @@ if st.button('Calculate'):
             'interest_table': None,
             'type': type
         }
-    elif interest_type == 'Variable':
+    elif interest_type != 'Fixed':
         payload = {
             "loan_amount": loan_amount,
             "loan_term": loan_term,  # 15 years
@@ -347,6 +435,7 @@ if st.button('Calculate'):
             'interest_table': interest_table_dict,
             'type': type
         }
+  
         
     # print(payload)
 

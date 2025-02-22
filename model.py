@@ -2,6 +2,7 @@ import pandas as pd
 import numpy_financial as npf
 from datetime import datetime, timedelta
 import plotly.graph_objects as go
+from dateutil.relativedelta import relativedelta
 
 class LoanCalculator:
     def __init__(self, annual_interest_rate, interest_rate_cap=12, interest_rate_minimum=4):
@@ -72,25 +73,34 @@ class LoanCalculator:
             # Generate the correct period date
             if payment_frequency == "monthly":
                 current_date = first_payment_date + pd.DateOffset(months=period - 1)
+                
+                
             else:
                 current_date = first_payment_date + timedelta(days=(365 // periods_per_year) * (period - 1))
 
             # Check for balance adjustment
             if adjustment_df is not None:
-                adjustments = adjustment_df[
-                    # (adjustment_df['Event Date'] > (current_date + timedelta(days=1) - timedelta(days=(365 // periods_per_year)))) &
-                    (adjustment_df['Event Date'] >= current_date) &
-                                             (adjustment_df['Event Date'] <= current_date)]
-                
-                # if not adjustments.empty:
-                #     print(adjustments)
-                #     print(period)
-                #     print(current_date - timedelta(days=(365 // periods_per_year)))
-                #     print(current_date)
+                if payment_frequency == "monthly":
+                    # Adjustments should be considered from the start of the current month
+                    month_start = current_date - pd.DateOffset(months=1) + pd.DateOffset(days=1)
+                    adjustments = adjustment_df[
+                        (adjustment_df['Event Date'] >= month_start) & (adjustment_df['Event Date'] <= current_date)
+                    ]
+                    
+                    print("Adjustments", adjustments)
+                    print("Current Date", current_date)
+                    print("Month Start", month_start)
+                else:
+                    # Use fixed-day periods for non-monthly payments
+                    adjustments = adjustment_df[
+                        (adjustment_df['Event Date'] > (current_date - timedelta(days=(365 // periods_per_year)))) &
+                        (adjustment_df['Event Date'] <= current_date)
+                    ]
                 
                 balance_adjustment = adjustments['Adjustment Amount'].sum() if not adjustments.empty else 0
             else:
                 balance_adjustment = 0
+
 
             # Apply adjustments and recalculate loan term if necessary
             remaining_balance += balance_adjustment
@@ -100,7 +110,7 @@ class LoanCalculator:
                                                         pmt=-initial_payment, 
                                                         pv=remaining_balance).round()))
                 
-                print("Remaining Period", remaining_periods)
+                # print("Remaining Period", remaining_periods)
                 
                 total_periods = period + remaining_periods - 1
 
@@ -215,10 +225,21 @@ class LoanCalculator:
 
             # Check for balance adjustment
             if adjustment_df is not None:
-                adjustments = adjustment_df[
-                    (adjustment_df['Event Date'] > (current_date - timedelta(days=(365 // periods_per_year)))) &
-                    (adjustment_df['Event Date'] <= current_date)
-                ]
+                if payment_frequency == "monthly":
+                    # Adjustments should be considered from the start of the current month
+                    month_start = current_date - pd.DateOffset(months=1) + pd.DateOffset(days=1)
+                    adjustments = adjustment_df[
+                        (adjustment_df['Event Date'] >= month_start) & (adjustment_df['Event Date'] <= current_date)
+                    ]
+                    
+                  
+                else:
+                    # Use fixed-day periods for non-monthly payments
+                    adjustments = adjustment_df[
+                        (adjustment_df['Event Date'] > (current_date - timedelta(days=(365 // periods_per_year)))) &
+                        (adjustment_df['Event Date'] <= current_date)
+                    ]
+                
                 balance_adjustment = adjustments['Adjustment Amount'].sum() if not adjustments.empty else 0
             else:
                 balance_adjustment = 0
